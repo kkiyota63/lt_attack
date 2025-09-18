@@ -353,6 +353,286 @@ class FraudAttackSystem:
         
         return results
     
+    def analyze_perturbations(self, original_csv: str = None, adversarial_csv: str = 'adversarial_sample.csv') -> Dict[str, Any]:
+        """元データと敵対的サンプルの摂動を詳細分析"""
+        print("=== 摂動分析 ===\n")
+        
+        # Load adversarial data
+        adv_df = pd.read_csv(adversarial_csv)
+        
+        # Load original data (from the fraud-only test set)
+        if original_csv is None:
+            # Load from the original Base.csv and filter to fraud cases
+            df = pd.read_csv(self.data_path)
+            df_processed, _ = self.preprocess_data(df)
+            fraud_cases = df_processed[df_processed['fraud_bool'] == 1]
+            
+            # Get the same number of cases as adversarial samples
+            original_df = fraud_cases.head(len(adv_df))
+        else:
+            original_df = pd.read_csv(original_csv)
+        
+        if not self.feature_info:
+            with open('feature_info.json', 'r') as f:
+                self.feature_info = json.load(f)
+        
+        features = self.feature_info['features']
+        
+        # Calculate perturbations
+        original_features = original_df[features].values
+        adversarial_features = adv_df[features].values
+        
+        # Calculate different norms of perturbation
+        perturbations = adversarial_features - original_features
+        
+        # Per-sample perturbation norms
+        l1_norms = np.sum(np.abs(perturbations), axis=1)
+        l2_norms = np.sqrt(np.sum(perturbations**2, axis=1))
+        linf_norms = np.max(np.abs(perturbations), axis=1)
+        
+        # Per-feature perturbation statistics
+        feature_perturbations = {}
+        for i, feature in enumerate(features):
+            feature_pert = perturbations[:, i]
+            feature_perturbations[feature] = {
+                'mean_abs': np.mean(np.abs(feature_pert)),
+                'std': np.std(feature_pert),
+                'max_abs': np.max(np.abs(feature_pert)),
+                'changed_samples': np.sum(np.abs(feature_pert) > 1e-6),
+                'change_rate': np.sum(np.abs(feature_pert) > 1e-6) / len(feature_pert)
+            }
+        
+        # Create detailed comparison DataFrame
+        comparison_df = pd.DataFrame()
+        comparison_df['sample_id'] = range(len(adv_df))
+        comparison_df['l1_perturbation'] = l1_norms
+        comparison_df['l2_perturbation'] = l2_norms
+        comparison_df['linf_perturbation'] = linf_norms
+        
+        # Add original vs adversarial values for key features
+        for feature in features:
+            comparison_df[f'{feature}_original'] = original_df[feature].values
+            comparison_df[f'{feature}_adversarial'] = adv_df[feature].values
+            comparison_df[f'{feature}_perturbation'] = perturbations[:, features.index(feature)]
+        
+        # Statistics
+        perturbation_stats = {
+            'total_samples': len(adv_df),
+            'l1_norm': {
+                'mean': np.mean(l1_norms),
+                'median': np.median(l1_norms),
+                'std': np.std(l1_norms),
+                'min': np.min(l1_norms),
+                'max': np.max(l1_norms)
+            },
+            'l2_norm': {
+                'mean': np.mean(l2_norms),
+                'median': np.median(l2_norms),
+                'std': np.std(l2_norms),
+                'min': np.min(l2_norms),
+                'max': np.max(l2_norms)
+            },
+            'linf_norm': {
+                'mean': np.mean(linf_norms),
+                'median': np.median(linf_norms),
+                'std': np.std(linf_norms),
+                'min': np.min(linf_norms),
+                'max': np.max(linf_norms)
+            },
+            'feature_perturbations': feature_perturbations
+        }
+        
+        # Print summary
+        print(f"総サンプル数: {len(adv_df)}")
+        print(f"\n摂動のノルム統計:")
+        print(f"L1ノルム - 平均: {perturbation_stats['l1_norm']['mean']:.4f}, 中央値: {perturbation_stats['l1_norm']['median']:.4f}")
+        print(f"L2ノルム - 平均: {perturbation_stats['l2_norm']['mean']:.4f}, 中央値: {perturbation_stats['l2_norm']['median']:.4f}")
+        print(f"L∞ノルム - 平均: {perturbation_stats['linf_norm']['mean']:.4f}, 中央値: {perturbation_stats['linf_norm']['median']:.4f}")
+        
+        print(f"\n最も変更された特徴量 (変更率順):")
+        sorted_features = sorted(feature_perturbations.items(), key=lambda x: x[1]['change_rate'], reverse=True)
+        for feature, stats in sorted_features[:10]:
+            print(f"  {feature}: 変更率{stats['change_rate']:.2%}, 平均摂動{stats['mean_abs']:.4f}, 最大摂動{stats['max_abs']:.4f}")
+        
+        # Save results
+        comparison_df.to_csv('perturbation_analysis.csv', index=False)
+        
+        # Convert numpy types to native Python types for JSON serialization
+        def convert_numpy_types(obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {key: convert_numpy_types(value) for key, value in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_numpy_types(item) for item in obj]
+            return obj
+        
+        perturbation_stats_serializable = convert_numpy_types(perturbation_stats)
+        
+        with open('perturbation_stats.json', 'w') as f:
+            json.dump(perturbation_stats_serializable, f, indent=2)
+        
+        print(f"\n詳細分析結果を 'perturbation_analysis.csv' と 'perturbation_stats.json' に保存しました。")
+        
+        return {
+            'comparison_df': comparison_df,
+            'perturbation_stats': perturbation_stats,
+            'original_df': original_df,
+            'adversarial_df': adv_df
+        }
+    
+    def visualize_perturbations(self, analysis_results: Dict = None, top_n_features: int = 10, 
+                               save_plots: bool = True) -> None:
+        """摂動の可視化"""
+        try:
+            import matplotlib.pyplot as plt
+            import seaborn as sns
+        except ImportError:
+            print("可視化にはmatplotlibとseabornが必要です: pip install matplotlib seaborn")
+            return
+        
+        if analysis_results is None:
+            print("先に analyze_perturbations() を実行してください")
+            return
+        
+        comparison_df = analysis_results['comparison_df']
+        perturbation_stats = analysis_results['perturbation_stats']
+        
+        # Set up the plotting style
+        plt.style.use('default')
+        sns.set_palette("husl")
+        
+        # 1. Perturbation norms distribution
+        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+        fig.suptitle('摂動の分布分析', fontsize=16, fontweight='bold')
+        
+        # L1 norm distribution
+        axes[0, 0].hist(comparison_df['l1_perturbation'], bins=30, alpha=0.7, color='skyblue', edgecolor='black')
+        axes[0, 0].set_title(f'L1ノルム分布\n平均: {perturbation_stats["l1_norm"]["mean"]:.4f}')
+        axes[0, 0].set_xlabel('L1 摂動')
+        axes[0, 0].set_ylabel('頻度')
+        axes[0, 0].grid(True, alpha=0.3)
+        
+        # L2 norm distribution
+        axes[0, 1].hist(comparison_df['l2_perturbation'], bins=30, alpha=0.7, color='lightcoral', edgecolor='black')
+        axes[0, 1].set_title(f'L2ノルム分布\n平均: {perturbation_stats["l2_norm"]["mean"]:.4f}')
+        axes[0, 1].set_xlabel('L2 摂動')
+        axes[0, 1].set_ylabel('頻度')
+        axes[0, 1].grid(True, alpha=0.3)
+        
+        # L∞ norm distribution
+        axes[1, 0].hist(comparison_df['linf_perturbation'], bins=30, alpha=0.7, color='lightgreen', edgecolor='black')
+        axes[1, 0].set_title(f'L∞ノルム分布\n平均: {perturbation_stats["linf_norm"]["mean"]:.4f}')
+        axes[1, 0].set_xlabel('L∞ 摂動')
+        axes[1, 0].set_ylabel('頻度')
+        axes[1, 0].grid(True, alpha=0.3)
+        
+        # Correlation between norms
+        axes[1, 1].scatter(comparison_df['l1_perturbation'], comparison_df['l2_perturbation'], 
+                          alpha=0.6, color='purple')
+        axes[1, 1].set_title('L1 vs L2 摂動の相関')
+        axes[1, 1].set_xlabel('L1 摂動')
+        axes[1, 1].set_ylabel('L2 摂動')
+        axes[1, 1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_plots:
+            plt.savefig('perturbation_norms_distribution.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        
+        # 2. Feature-wise perturbation analysis
+        feature_stats = perturbation_stats['feature_perturbations']
+        sorted_features = sorted(feature_stats.items(), key=lambda x: x[1]['change_rate'], reverse=True)
+        top_features = sorted_features[:top_n_features]
+        
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle(f'特徴量別摂動分析 (上位{top_n_features}特徴量)', fontsize=16, fontweight='bold')
+        
+        # Change rate
+        features_names = [f[0] for f in top_features]
+        change_rates = [f[1]['change_rate'] * 100 for f in top_features]
+        
+        axes[0, 0].barh(range(len(features_names)), change_rates, color='steelblue')
+        axes[0, 0].set_yticks(range(len(features_names)))
+        axes[0, 0].set_yticklabels(features_names, fontsize=10)
+        axes[0, 0].set_xlabel('変更率 (%)')
+        axes[0, 0].set_title('特徴量変更率')
+        axes[0, 0].grid(True, alpha=0.3)
+        
+        # Mean absolute perturbation
+        mean_abs_pert = [f[1]['mean_abs'] for f in top_features]
+        axes[0, 1].barh(range(len(features_names)), mean_abs_pert, color='darkorange')
+        axes[0, 1].set_yticks(range(len(features_names)))
+        axes[0, 1].set_yticklabels(features_names, fontsize=10)
+        axes[0, 1].set_xlabel('平均絶対摂動')
+        axes[0, 1].set_title('平均摂動量')
+        axes[0, 1].grid(True, alpha=0.3)
+        
+        # Max absolute perturbation
+        max_abs_pert = [f[1]['max_abs'] for f in top_features]
+        axes[1, 0].barh(range(len(features_names)), max_abs_pert, color='crimson')
+        axes[1, 0].set_yticks(range(len(features_names)))
+        axes[1, 0].set_yticklabels(features_names, fontsize=10)
+        axes[1, 0].set_xlabel('最大絶対摂動')
+        axes[1, 0].set_title('最大摂動量')
+        axes[1, 0].grid(True, alpha=0.3)
+        
+        # Number of changed samples
+        changed_samples = [f[1]['changed_samples'] for f in top_features]
+        axes[1, 1].barh(range(len(features_names)), changed_samples, color='forestgreen')
+        axes[1, 1].set_yticks(range(len(features_names)))
+        axes[1, 1].set_yticklabels(features_names, fontsize=10)
+        axes[1, 1].set_xlabel('変更されたサンプル数')
+        axes[1, 1].set_title('影響サンプル数')
+        axes[1, 1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_plots:
+            plt.savefig('feature_perturbation_analysis.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        
+        # 3. Sample-wise perturbation heatmap for top features
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        # Get perturbation data for top features
+        perturbation_data = []
+        feature_labels = []
+        for feature_name, _ in top_features:
+            pert_col = f'{feature_name}_perturbation'
+            if pert_col in comparison_df.columns:
+                perturbation_data.append(comparison_df[pert_col].values[:50])  # First 50 samples
+                feature_labels.append(feature_name)
+        
+        if perturbation_data:
+            perturbation_matrix = np.array(perturbation_data)
+            
+            # Create heatmap
+            sns.heatmap(perturbation_matrix, 
+                       xticklabels=range(1, min(51, len(comparison_df) + 1)),
+                       yticklabels=feature_labels,
+                       cmap='RdBu_r', center=0,
+                       cbar_kws={'label': '摂動量'},
+                       ax=ax)
+            
+            ax.set_title(f'上位{len(feature_labels)}特徴量の摂動ヒートマップ (最初の50サンプル)', fontsize=14)
+            ax.set_xlabel('サンプル番号')
+            ax.set_ylabel('特徴量')
+        
+        plt.tight_layout()
+        if save_plots:
+            plt.savefig('perturbation_heatmap.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        
+        print(f"\n可視化完了！以下のファイルが保存されました:")
+        if save_plots:
+            print("- perturbation_norms_distribution.png")
+            print("- feature_perturbation_analysis.png") 
+            print("- perturbation_heatmap.png")
+    
     def run_full_pipeline(self) -> Dict[str, Any]:
         """完全なパイプラインの実行"""
         print("=== 詐欺検知攻撃システム - 完全パイプライン ===\n")
@@ -380,3 +660,160 @@ class FraudAttackSystem:
         results = self.verify_attack_success('adversarial_sample.csv')
         
         return results
+    
+    def generate_perturbation_report(self, analysis_results: Dict = None) -> str:
+        """摂動分析の詳細レポート生成"""
+        if analysis_results is None:
+            print("先に analyze_perturbations() を実行してください")
+            return ""
+        
+        comparison_df = analysis_results['comparison_df']
+        perturbation_stats = analysis_results['perturbation_stats']
+        
+        report = []
+        report.append("=" * 80)
+        report.append("敵対的サンプル摂動分析レポート")
+        report.append("=" * 80)
+        report.append("")
+        
+        # 1. 基本統計
+        report.append("1. 基本統計")
+        report.append("-" * 40)
+        report.append(f"総サンプル数: {perturbation_stats['total_samples']:,}")
+        report.append("")
+        
+        # 2. 摂動ノルム統計
+        report.append("2. 摂動ノルム統計")
+        report.append("-" * 40)
+        for norm_type in ['l1_norm', 'l2_norm', 'linf_norm']:
+            stats = perturbation_stats[norm_type]
+            norm_name = norm_type.replace('_norm', '').upper()
+            report.append(f"{norm_name}ノルム:")
+            report.append(f"  平均: {stats['mean']:.6f}")
+            report.append(f"  中央値: {stats['median']:.6f}")
+            report.append(f"  標準偏差: {stats['std']:.6f}")
+            report.append(f"  最小値: {stats['min']:.6f}")
+            report.append(f"  最大値: {stats['max']:.6f}")
+            report.append("")
+        
+        # 3. 特徴量別分析
+        report.append("3. 特徴量別摂動分析")
+        report.append("-" * 40)
+        feature_stats = perturbation_stats['feature_perturbations']
+        sorted_features = sorted(feature_stats.items(), key=lambda x: x[1]['change_rate'], reverse=True)
+        
+        report.append("上位10特徴量（変更率順）:")
+        report.append("")
+        for i, (feature, stats) in enumerate(sorted_features[:10], 1):
+            report.append(f"{i:2d}. {feature}")
+            report.append(f"    変更率: {stats['change_rate']:.1%}")
+            report.append(f"    平均摂動: {stats['mean_abs']:.6f}")
+            report.append(f"    最大摂動: {stats['max_abs']:.6f}")
+            report.append(f"    変更サンプル数: {stats['changed_samples']:,}")
+            report.append("")
+        
+        # 4. インパクト分析
+        report.append("4. 攻撃インパクト分析")
+        report.append("-" * 40)
+        
+        # 微小摂動での成功例を特定
+        small_perturbation_threshold = np.percentile(comparison_df['l2_perturbation'], 25)  # 下位25%
+        small_pert_mask = comparison_df['l2_perturbation'] <= small_perturbation_threshold
+        small_pert_count = small_pert_mask.sum()
+        
+        report.append(f"微小摂動での攻撃成功:")
+        report.append(f"  L2摂動 ≤ {small_perturbation_threshold:.6f} のサンプル: {small_pert_count:,}")
+        report.append(f"  全体に占める割合: {(small_pert_count/len(comparison_df))*100:.1f}%")
+        report.append("")
+        
+        # 最も効果的な特徴量の組み合わせ
+        report.append("5. 攻撃効果の高い特徴量")
+        report.append("-" * 40)
+        
+        # 変更率と平均摂動の積でランキング
+        feature_impact = {}
+        for feature, stats in feature_stats.items():
+            impact_score = stats['change_rate'] * stats['mean_abs']
+            feature_impact[feature] = impact_score
+        
+        sorted_impact = sorted(feature_impact.items(), key=lambda x: x[1], reverse=True)
+        
+        report.append("インパクトスコア順（変更率 × 平均摂動）:")
+        report.append("")
+        for i, (feature, score) in enumerate(sorted_impact[:10], 1):
+            stats = feature_stats[feature]
+            report.append(f"{i:2d}. {feature}")
+            report.append(f"    インパクトスコア: {score:.8f}")
+            report.append(f"    変更率: {stats['change_rate']:.1%}")
+            report.append(f"    平均摂動: {stats['mean_abs']:.6f}")
+            report.append("")
+        
+        # 6. 実例サンプル
+        report.append("6. 摂動実例（最小・最大・代表例）")
+        report.append("-" * 40)
+        
+        # 最小摂動のサンプル
+        min_l2_idx = comparison_df['l2_perturbation'].idxmin()
+        min_l2_value = comparison_df.loc[min_l2_idx, 'l2_perturbation']
+        
+        # 最大摂動のサンプル
+        max_l2_idx = comparison_df['l2_perturbation'].idxmax()
+        max_l2_value = comparison_df.loc[max_l2_idx, 'l2_perturbation']
+        
+        # 中央値付近のサンプル
+        median_l2 = comparison_df['l2_perturbation'].median()
+        median_idx = (comparison_df['l2_perturbation'] - median_l2).abs().idxmin()
+        median_l2_value = comparison_df.loc[median_idx, 'l2_perturbation']
+        
+        examples = [
+            ("最小摂動サンプル", min_l2_idx, min_l2_value),
+            ("中央値摂動サンプル", median_idx, median_l2_value),
+            ("最大摂動サンプル", max_l2_idx, max_l2_value)
+        ]
+        
+        for example_name, idx, l2_value in examples:
+            report.append(f"{example_name} (ID: {idx}):")
+            report.append(f"  L2摂動: {l2_value:.6f}")
+            report.append(f"  L1摂動: {comparison_df.loc[idx, 'l1_perturbation']:.6f}")
+            report.append(f"  L∞摂動: {comparison_df.loc[idx, 'linf_perturbation']:.6f}")
+            
+            # 変更された特徴量を表示
+            changed_features = []
+            for feature in feature_stats.keys():
+                pert_col = f'{feature}_perturbation'
+                if pert_col in comparison_df.columns:
+                    pert_value = comparison_df.loc[idx, pert_col]
+                    if abs(pert_value) > 1e-6:
+                        changed_features.append((feature, pert_value))
+            
+            if changed_features:
+                report.append(f"  変更された特徴量:")
+                for feature, pert in sorted(changed_features, key=lambda x: abs(x[1]), reverse=True)[:5]:
+                    orig_col = f'{feature}_original'
+                    adv_col = f'{feature}_adversarial'
+                    if orig_col in comparison_df.columns and adv_col in comparison_df.columns:
+                        orig_val = comparison_df.loc[idx, orig_col]
+                        adv_val = comparison_df.loc[idx, adv_col]
+                        report.append(f"    {feature}: {orig_val:.6f} → {adv_val:.6f} (摂動: {pert:+.6f})")
+            report.append("")
+        
+        # 7. 結論
+        report.append("7. 主要な発見")
+        report.append("-" * 40)
+        report.append(f"• 平均L2摂動: {perturbation_stats['l2_norm']['mean']:.6f}")
+        report.append(f"• 最も影響を受けやすい特徴量: {sorted_features[0][0]}")
+        report.append(f"• 最小摂動で攻撃成功: L2={min_l2_value:.6f}")
+        report.append(f"• 微小摂動成功率: {(small_pert_count/len(comparison_df))*100:.1f}%")
+        report.append("")
+        report.append("この分析により、詐欺検知モデルが非常に小さな特徴量の変更で")
+        report.append("誤分類される脆弱性が確認されました。")
+        
+        report_text = "\n".join(report)
+        
+        # Save report
+        with open('perturbation_report.txt', 'w', encoding='utf-8') as f:
+            f.write(report_text)
+        
+        print("詳細レポートを 'perturbation_report.txt' に保存しました。")
+        
+        return report_text

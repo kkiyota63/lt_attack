@@ -1,0 +1,243 @@
+{
+  "total_samples": 3600,
+  "l1_norm": {
+    "mean": 21033.694185035507,
+    "median": 20932.325938916187,
+    "std": 4175.315964882093,
+    "min": 8967.456539972842,
+    "max": 36204.80820053344
+  },
+  "l2_norm": {
+    "mean": 10911.289313066096,
+    "median": 10708.181619620555,
+    "std": 2334.3686214524096,
+    "min": 4438.2296679519095,
+    "max": 18829.65592978271
+  },
+  "linf_norm": {
+    "mean": 7588.544128189172,
+    "median": 7027.334895067707,
+    "std": 2150.8228402614654,
+    "min": 3105.061187424657,
+    "max": 16083.617169502995
+  },
+  "feature_perturbations": {
+    "income": {
+      "mean_abs": 0.33208279971563887,
+      "std": 0.43392501229094305,
+      "max_abs": 0.8460911044,
+      "changed_samples": 2819,
+      "change_rate": 0.7830555555555555
+    },
+    "name_email_similarity": {
+      "mean_abs": 0.3390959533672486,
+      "std": 0.42201762090151296,
+      "max_abs": 0.9869232574494272,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "prev_address_months_count": {
+      "mean_abs": 8.481666666666667,
+      "std": 34.581156397347065,
+      "max_abs": 357.0,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "current_address_months_count": {
+      "mean_abs": 113.76416666666667,
+      "std": 89.54099532476731,
+      "max_abs": 391.0,
+      "changed_samples": 3581,
+      "change_rate": 0.9947222222222222
+    },
+    "customer_age": {
+      "mean_abs": 23.061666666666667,
+      "std": 13.518585457723665,
+      "max_abs": 72.0,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "days_since_request": {
+      "mean_abs": 1.251603694831443,
+      "std": 5.260038635336386,
+      "max_abs": 73.12947133187691,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "intended_balcon_amount": {
+      "mean_abs": 7.265479598199336,
+      "std": 18.63389207071302,
+      "max_abs": 111.32127177339228,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "payment_type": {
+      "mean_abs": 0.8652777777777778,
+      "std": 0.9687888184178005,
+      "max_abs": 3.0,
+      "changed_samples": 2420,
+      "change_rate": 0.6722222222222223
+    },
+    "zip_count_4w": {
+      "mean_abs": 1929.4502777777777,
+      "std": 1156.146492676296,
+      "max_abs": 6367.0,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "velocity_6h": {
+      "mean_abs": 6615.318547834456,
+      "std": 3105.8403926635942,
+      "max_abs": 16083.617169502995,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "velocity_24h": {
+      "mean_abs": 5495.751769002257,
+      "std": 1291.9114727613135,
+      "max_abs": 9306.012144865505,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "velocity_4w": {
+      "mean_abs": 5688.574144299836,
+      "std": 689.3982104920078,
+      "max_abs": 6888.977775445456,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "bank_branch_count_8w": {
+      "mean_abs": 165.14361111111447,
+      "std": 453.1527290052016,
+      "max_abs": 2250.0,
+      "changed_samples": 2858,
+      "change_rate": 0.7938888888888889
+    },
+    "date_of_birth_distinct_emails_4w": {
+      "mean_abs": 7.391388888912611,
+      "std": 5.620037392509353,
+      "max_abs": 35.0000000001,
+      "changed_samples": 3399,
+      "change_rate": 0.9441666666666667
+    },
+    "employment_status": {
+      "mean_abs": 0.5036111111111111,
+      "std": 0.9703311370001989,
+      "max_abs": 6.0,
+      "changed_samples": 1175,
+      "change_rate": 0.3263888888888889
+    },
+    "credit_risk_score": {
+      "mean_abs": 155.41000000007924,
+      "std": 88.60748191105091,
+      "max_abs": 375.0000000001,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "email_is_free": {
+      "mean_abs": 0.49944444449030556,
+      "std": 0.6831128822621909,
+      "max_abs": 1.0000000001,
+      "changed_samples": 1798,
+      "change_rate": 0.49944444444444447
+    },
+    "housing_status": {
+      "mean_abs": 1.0158333333333334,
+      "std": 1.2817623561543385,
+      "max_abs": 5.0,
+      "changed_samples": 2048,
+      "change_rate": 0.5688888888888889
+    },
+    "phone_home_valid": {
+      "mean_abs": 0.31527777778538885,
+      "std": 0.5413197607175464,
+      "max_abs": 1.0000000001,
+      "changed_samples": 1135,
+      "change_rate": 0.31527777777777777
+    },
+    "phone_mobile_valid": {
+      "mean_abs": 0.23833333338358337,
+      "std": 0.4796166164418998,
+      "max_abs": 1.0000000001,
+      "changed_samples": 858,
+      "change_rate": 0.23833333333333334
+    },
+    "bank_months_count": {
+      "mean_abs": 11.474444444448082,
+      "std": 12.861314841200295,
+      "max_abs": 31.0,
+      "changed_samples": 3327,
+      "change_rate": 0.9241666666666667
+    },
+    "has_other_cards": {
+      "mean_abs": 0.19083333333333333,
+      "std": 0.4323506485866921,
+      "max_abs": 1.0,
+      "changed_samples": 687,
+      "change_rate": 0.19083333333333333
+    },
+    "proposed_credit_limit": {
+      "mean_abs": 795.7138888889258,
+      "std": 639.1730823896944,
+      "max_abs": 1999.0000000001,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "foreign_request": {
+      "mean_abs": 0.07833333333333334,
+      "std": 0.2794168309749769,
+      "max_abs": 1.0,
+      "changed_samples": 282,
+      "change_rate": 0.07833333333333334
+    },
+    "source": {
+      "mean_abs": 0.03111111111111111,
+      "std": 0.1758787461103056,
+      "max_abs": 1.0,
+      "changed_samples": 112,
+      "change_rate": 0.03111111111111111
+    },
+    "session_length_in_minutes": {
+      "mean_abs": 8.182295185930318,
+      "std": 10.364710936102304,
+      "max_abs": 72.12173914853491,
+      "changed_samples": 3600,
+      "change_rate": 1.0
+    },
+    "device_os": {
+      "mean_abs": 1.7266666666666666,
+      "std": 1.23951105453763,
+      "max_abs": 4.0,
+      "changed_samples": 3294,
+      "change_rate": 0.915
+    },
+    "keep_alive_session": {
+      "mean_abs": 0.4413888888888889,
+      "std": 0.6599648676582791,
+      "max_abs": 1.0,
+      "changed_samples": 1589,
+      "change_rate": 0.4413888888888889
+    },
+    "device_distinct_emails_8w": {
+      "mean_abs": 0.17027777777777778,
+      "std": 0.39665956654087525,
+      "max_abs": 2.0,
+      "changed_samples": 606,
+      "change_rate": 0.16833333333333333
+    },
+    "device_fraud_count": {
+      "mean_abs": 0.0,
+      "std": 0.0,
+      "max_abs": 0.0,
+      "changed_samples": 0,
+      "change_rate": 0.0
+    },
+    "month": {
+      "mean_abs": 0.7116666666666667,
+      "std": 0.874811972742898,
+      "max_abs": 2.0,
+      "changed_samples": 2462,
+      "change_rate": 0.6838888888888889
+    }
+  }
+}
