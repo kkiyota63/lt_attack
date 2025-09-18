@@ -12,3 +12,8 @@ tree_verification_models/
 .DS_Store
 .gdb_history
 *__pycache__*
+data/bosch.test
+XGBoost/Base.csv
+*.csv
+*.dat
+*.test

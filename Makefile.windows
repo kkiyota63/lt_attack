@@ -1,0 +1,120 @@
+# クロスプラットフォームMakefile
+# Windows (MSYS2/MinGW-w64)、Ubuntu/Linux、macOS対応
+# 使用方法: 
+#   Windows: make -f Makefile.windows
+#   Linux:   make -f Makefile.windows
+#   macOS:   make -f Makefile.windows
+
+CC=g++
+CXX=g++
+
+# 自動OS検出
+ifeq ($(OS),Windows_NT)
+    # Windows環境 (MSYS2/MinGW-w64)
+    DETECTED_OS := Windows
+    EXE_SUFFIX := .exe
+    RM := rm -f
+    BOOST_ROOT := /mingw64
+    PTHREAD_LIB := -lpthread
+    BOOST_LIBS := -lboost_thread-mt -lboost_filesystem-mt -lboost_system-mt
+else
+    # Unix環境 (Linux/macOS)
+    DETECTED_OS := $(shell uname -s)
+    EXE_SUFFIX := 
+    RM := rm -f
+    PTHREAD_LIB := -pthread
+    
+    ifeq ($(DETECTED_OS),Darwin)
+        # macOS (Homebrew)
+        ifeq ($(shell uname -m),arm64)
+            # Apple Silicon
+            BOOST_ROOT := /opt/homebrew/opt/boost
+        else
+            # Intel Mac
+            BOOST_ROOT := /usr/local/opt/boost
+        endif
+        BOOST_LIBS := -lboost_thread -lboost_filesystem
+    else
+        # Linux (Ubuntu/Debian/CentOS等)
+        # パッケージマネージャーでインストールされたBoost
+        BOOST_ROOT := /usr
+        BOOST_LIBS := -lboost_thread -lboost_filesystem -lboost_system
+        
+        # Ubuntu/Debianの場合のライブラリ検索パスを追加
+        ifneq ($(wildcard /usr/lib/x86_64-linux-gnu),)
+            LDFLAGS_EXTRA := -L/usr/lib/x86_64-linux-gnu
+        endif
+    endif
+endif
+
+CPPFLAGS = --std=c++17 $(PTHREAD_LIB) -I$(BOOST_ROOT)/include
+LDFLAGS = -L$(BOOST_ROOT)/lib $(BOOST_LIBS) $(PTHREAD_LIB)
+
+# Debug flags
+DEBUG_CFLAGS = -g $(CPPFLAGS)
+CFLAGS = -O2 $(CPPFLAGS)
+
+# Dependencies
+DEPS = neighbor_attack.h decision_tree.h decision_forest.h bounding_box.h interval.h utility.h test.h timing.h nlohmann/json.hpp
+
+# Object files
+OBJS = bounding_box.o decision_forest.o decision_tree.o interval.o neighbor_attack.o timing.o utility.o
+DEBUG_OBJS = debug_bounding_box.o debug_decision_forest.o debug_decision_tree.o debug_interval.o debug_neighbor_attack.o debug_timing.o debug_utility.o
+
+# Targets
+LT_ATTACK = lt_attack$(EXE_SUFFIX)
+DEBUG_LT_ATTACK = debug_lt_attack$(EXE_SUFFIX)
+FOREST_TEST = decision_forest_test$(EXE_SUFFIX)
+
+# Default target
+all: $(LT_ATTACK)
+
+debug: $(DEBUG_LT_ATTACK)
+
+test: $(FOREST_TEST)
+
+# Build rules
+%.o: %.cc $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+debug_%.o: %.cc $(DEPS)
+	$(CC) -c -o $@ $< $(DEBUG_CFLAGS)
+
+$(LT_ATTACK): $(OBJS) lt_attack.o
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+$(DEBUG_LT_ATTACK): $(DEBUG_OBJS) debug_lt_attack.o
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+$(FOREST_TEST): $(OBJS) decision_forest_test.o
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+# Clean
+clean:
+ifeq ($(OS),Windows_NT)
+	if exist *.o $(RM) *.o
+	if exist $(LT_ATTACK) $(RM) $(LT_ATTACK)
+	if exist $(DEBUG_LT_ATTACK) $(RM) $(DEBUG_LT_ATTACK)
+	if exist $(FOREST_TEST) $(RM) $(FOREST_TEST)
+else
+	$(RM) *.o $(LT_ATTACK) $(DEBUG_LT_ATTACK) $(FOREST_TEST)
+endif
+
+# Info target
+info:
+	@echo "Detected OS: $(DETECTED_OS)"
+	@echo "Compiler: $(CC)"
+	@echo "Boost root: $(BOOST_ROOT)"
+	@echo "Executable suffix: $(EXE_SUFFIX)"
+
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  all     - Build lt_attack (default)"
+	@echo "  debug   - Build debug version"
+	@echo "  test    - Build test executable"
+	@echo "  clean   - Remove built files"
+	@echo "  info    - Show build configuration"
+	@echo "  help    - Show this help"
+
+.PHONY: all debug test clean info help

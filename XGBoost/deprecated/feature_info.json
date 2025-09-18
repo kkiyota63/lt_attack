@@ -1,0 +1,76 @@
+{
+  "features": [
+    "income",
+    "name_email_similarity",
+    "prev_address_months_count",
+    "current_address_months_count",
+    "customer_age",
+    "days_since_request",
+    "intended_balcon_amount",
+    "payment_type",
+    "zip_count_4w",
+    "velocity_6h",
+    "velocity_24h",
+    "velocity_4w",
+    "bank_branch_count_8w",
+    "date_of_birth_distinct_emails_4w",
+    "employment_status",
+    "credit_risk_score",
+    "email_is_free",
+    "housing_status",
+    "phone_home_valid",
+    "phone_mobile_valid",
+    "bank_months_count",
+    "has_other_cards",
+    "proposed_credit_limit",
+    "foreign_request",
+    "source",
+    "session_length_in_minutes",
+    "device_os",
+    "keep_alive_session",
+    "device_distinct_emails_8w",
+    "device_fraud_count",
+    "month"
+  ],
+  "num_features": 31,
+  "num_classes": 2,
+  "feature_start": 1,
+  "label_encoders": {
+    "payment_type": {
+      "0": "AA",
+      "1": "AB",
+      "2": "AC",
+      "3": "AD",
+      "4": "AE"
+    },
+    "employment_status": {
+      "0": "CA",
+      "1": "CB",
+      "2": "CC",
+      "3": "CD",
+      "4": "CE",
+      "5": "CF",
+      "6": "CG"
+    },
+    "housing_status": {
+      "0": "BA",
+      "1": "BB",
+      "2": "BC",
+      "3": "BD",
+      "4": "BE",
+      "5": "BF",
+      "6": "BG"
+    },
+    "source": {
+      "0": "INTERNET",
+      "1": "TELEAPP"
+    },
+    "device_os": {
+      "0": "linux",
+      "1": "macintosh",
+      "2": "other",
+      "3": "windows",
+      "4": "x11"
+    }
+  }
+}

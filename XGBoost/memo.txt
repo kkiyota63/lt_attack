@@ -1,0 +1,121 @@
+🚀 完全ガイド: Base.csvから敵対的攻撃まで
+
+  Base.csvだけの状態から完全実行する手順を説明します。
+
+  📋 前提条件
+
+  - Base.csvがXGBoostディレクトリに配置済み
+  - システムがビルド済み（lt_attack実行ファイル存在）
+
+  🎯 ワンコマンド実行（最短ルート）
+
+  cd XGBoost
+  python main.py pipeline
+
+  これで学習→攻撃→検証まで自動実行されます！
+
+  📝 詳細ステップ（理解を深めたい場合）
+
+  ステップ1: モデル学習
+
+  cd XGBoost
+  python main.py train
+
+  何が起こるか：
+  - Base.csvを読み込み
+  - XGBoostモデルを訓練
+  - 以下のファイルが生成される：
+    - base_fraud_model.json - 攻撃用JSONモデル
+    - base_fraud_only_test.libsvm - 詐欺ケースのみの攻撃対象データ
+    - feature_info.json - 特徴量情報
+
+  ステップ2: 敵対的攻撃実行
+
+  python main.py attack
+
+  何が起こるか：
+  - C++のlt_attackバイナリを実行
+  - 詐欺ケース（label=1）を非詐欺（label=0）に誤分類させる攻撃
+  - adversarial_examples.libsvmが生成される
+
+  ステップ3: 結果変換・検証
+
+  python main.py convert
+
+  何が起こるか：
+  - LIBSVM形式をCSV形式に変換
+  - カテゴリ変数を適切な離散値に修正
+  - XGBoostで攻撃成功率を検証
+  - adversarial_fixed.csvとattack_results.csvが生成される
+
+  📊 実行結果の確認
+
+  実行完了後、以下のような結果が表示されます：
+
+  === 攻撃成功率の検証 ===
+  敵対的サンプル数: 3,600
+  攻撃成功: 3,600 / 3,600
+  成功率: 100.00%
+  平均詐欺確率: 0.0609
+  詐欺確率 < 0.1 の攻撃: 2885 (80.1%)
+
+  📁 生成されるファイル
+
+  学習段階：
+  - base_fraud_model.json - XGBoostモデル
+  - base_fraud_only_test.libsvm - 攻撃対象データ
+  - feature_info.json - メタデータ
+
+  攻撃段階：
+  - adversarial_examples.libsvm - 生の攻撃結果
+
+  検証段階：
+  - adversarial_fixed.csv - 修正済み敵対的サンプル
+  - attack_results.csv - 検証結果付きデータ
+
+  🔍 結果の解釈
+
+  成功した攻撃では：
+  - 成功率 100% = 全ての詐欺ケースを非詐欺として誤分類
+  - 平均詐欺確率 < 0.1 = モデルが高い確信度で騙された
+  - L2ノルム ≈ 0 = 最小限の変更で攻撃成功
+
+  ⚡ 高速実行（デバッグ用）
+
+  少数サンプルでテストしたい場合：
+
+  cd XGBoost
+  # 設定ファイルのnum_pointを50に変更
+  python -c "
+  import json
+  with open('../configs/base_fraud_to_benign_attack.json', 'r') as f:
+      config = json.load(f)
+  config['num_point'] = 50
+  with open('../configs/base_fraud_to_benign_attack.json', 'w') as f:
+      json.dump(config, f, indent=2)
+  "
+
+  python main.py pipeline
+
+  🛠️ トラブルシューティング
+
+  問題：lt_attackが見つからない
+  # プロジェクトルートで
+  python build.py
+
+  問題：Base.csvが見つからない
+  # XGBoostディレクトリにBase.csvを配置
+  ls XGBoost/Base.csv
+
+  問題：依存関係エラー
+  python install.py check
+
+  📈 結果ファイルの活用
+
+  生成されたattack_results.csvには以下の情報が含まれます：
+  - fraud_bool: 元のラベル（すべて1=詐欺）
+  - predicted_label: 攻撃後の予測（すべて0=非詐欺）
+  - fraud_probability: モデルの詐欺確率
+  - attack_success: 攻撃成功フラグ
+
+  これで、Base.csvから始めて完全な敵対的攻撃実験ができます！
