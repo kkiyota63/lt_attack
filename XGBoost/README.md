@@ -1,223 +1,221 @@
-# 詐欺検知回避攻撃システム (リファクタリング版)
+# 詐欺検知攻撃システム (Fraud Detection Attack System)
 
-XGBoostベースの詐欺検知モデルに対する敵対的攻撃システム。統合されたAPIで簡単に使用できます。
+このシステムは、XGBoostベースの詐欺検知モデルに対するLT-Attack攻撃を実行し、モデルの脆弱性を分析するためのツールです。
 
-## 概要
+## 🎯 機能
 
-詐欺検知システムを騙すために、詐欺取引（label=1）を非詐欺取引（label=0）として誤分類させる敵対的サンプルを生成します。LT-Attack（Leaf Tuple Attack）アルゴリズムを使用して、最小限の変更で効果的な攻撃を実現します。
+- **データ前処理**: CSVデータの読み込みと正規化
+- **モデル訓練**: XGBoostを使った詐欺検知モデルの訓練
+- **攻撃実行**: LT-Attackによる敵対的サンプル生成
+- **摂動分析**: 元データと敵対的サンプルの詳細比較
+- **可視化とレポート**: グラフ生成と総合分析レポート
 
-## 対応プラットフォーム
+## 📋 前提条件
 
-- ✅ **Windows 10/11** (MSYS2/MinGW-w64)
-- ✅ **Ubuntu/Linux** (18.04以上)
-- ✅ **macOS** (Intel & Apple Silicon)
-
-## システム要件
-
-- Python 3.7+
-- C++ コンパイラ (g++)
-- Boost C++ ライブラリ
-- Make ユーティリティ
-
-## 🚀 簡単インストール（推奨）
-
-### 自動インストール
+### 必要なソフトウェア
 ```bash
-# 1. 依存関係の自動インストール
-python install.py
-
-# 2. システムのビルド
-python build.py
-
-# 3. 動作確認
-python install.py check
+# Python 3.7+
+# 必要なライブラリ
+pip install pandas xgboost scikit-learn numpy matplotlib seaborn
 ```
 
-### プラットフォーム別インストール
+### データ形式
+- CSV形式
+- `fraud_bool`カラム（0: 正常, 1: 詐欺）が必要
+- `has_missing`カラムがある場合は自動で削除
 
-<details>
-<summary><b>🪟 Windows (MSYS2)</b></summary>
+## 🚀 基本的な使い方
 
-```bash
-# 1. MSYS2のインストール
-# https://www.msys2.org/ からダウンロード・インストール
+### 1. ワンコマンド実行（推奨）
 
-# 2. MSYS2 MINGW64ターミナルで実行
-pacman -Syu
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-boost mingw-w64-x86_64-python mingw-w64-x86_64-python-pip make
-
-# 3. Pythonパッケージ
-pip install xgboost scikit-learn pandas numpy
-
-# 4. ビルド
-make -f Makefile.windows
-```
-</details>
-
-<details>
-<summary><b>🐧 Ubuntu/Linux</b></summary>
-
-```bash
-# 1. 依存関係のインストール
-sudo apt-get update
-sudo apt-get install build-essential libboost-all-dev python3 python3-pip python3-dev
-
-# 2. Pythonパッケージ
-pip3 install xgboost scikit-learn pandas numpy
-
-# 3. ビルド
-make -f Makefile.windows  # クロスプラットフォーム対応版
-```
-</details>
-
-<details>
-<summary><b>🍎 macOS</b></summary>
-
-```bash
-# 1. Homebrewのインストール (未インストールの場合)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# 2. 依存関係のインストール
-brew install boost python3
-
-# 3. Pythonパッケージ
-pip3 install xgboost scikit-learn pandas numpy
-
-# 4. ビルド
-make  # または make -f Makefile.windows
-```
-</details>
-
-## 使用方法
-
-### 🚀 **簡単実行（推奨）**
-
-**完全パイプライン実行**
 ```bash
 cd XGBoost
-python main.py pipeline
+python3 fraud_attack_system.py top100_cleaned_data.csv
 ```
 
-**個別ステップ実行**
-```bash
-cd XGBoost
-
-# 1. モデル訓練
-python main.py train
-
-# 2. 敵対的攻撃
-python main.py attack
-
-# 3. 結果変換・検証
-python main.py convert
-```
-
-### 📋 **利用可能なコマンド**
+### 2. オプション付き実行
 
 ```bash
-python main.py help      # ヘルプ表示
-python main.py train     # モデル訓練
-python main.py attack    # 敵対的攻撃実行
-python main.py convert   # 結果変換・検証
-python main.py verify    # 攻撃検証のみ
-python main.py pipeline  # 完全パイプライン
+# 正規化を無効にする場合
+python3 fraud_attack_system.py top100_cleaned_data.csv --no-normalize
+
+# スレッド数を指定
+python3 fraud_attack_system.py top100_cleaned_data.csv --threads 20
 ```
 
-### 🔧 **プログラマティック使用**
+### 3. 段階的実行
 
 ```python
-from fraud_attack_utils import FraudAttackSystem
+from fraud_attack_system import FraudAttackSystem
 
 # システム初期化
-system = FraudAttackSystem('Base.csv')
+system = FraudAttackSystem('top100_cleaned_data.csv')
 
-# モデル訓練
-results = system.train_model()
+# 1. モデル訓練
+system.train_model()
 
-# 攻撃後の結果変換・検証
-results = system.convert_and_verify_results()
+# 2. 攻撃設定作成
+config_path = system.create_attack_config()
+
+# 3. 攻撃実行
+system.run_attack(config_path)
+
+# 4. 結果分析
+system.analyze_attack_results()
+
+# 5. レポート生成
+system.generate_report()
 ```
 
-## 出力ファイル
+## 📊 出力ファイル
 
-### 最終結果
-- `adversarial_sample.csv` - 修正済み敵対的サンプル（CSV形式）
+### 実行後に生成されるファイル
 
-### 中間ファイル
-- `adversarial_examples.libsvm` - 敵対的サンプル（LIBSVM形式）
-- `adversarial_raw.csv` - 未修正敵対的サンプル（CSV形式）
+| ファイル名 | 説明 |
+|-----------|------|
+| `attack_model.json` | 訓練済みXGBoostモデル（JSON形式） |
+| `attack_analysis.csv` | 元データと敵対的サンプルの詳細比較 |
+| `attack_stats.json` | 摂動統計情報 |
+| `attack_report.txt` | 総合分析レポート |
+| `fraud_test.libsvm` | 攻撃対象の詐欺ケース（LIBSVM形式） |
+| `adversarial_examples.libsvm` | 生成された敵対的サンプル |
 
-## 結果の解釈
-
-攻撃が成功すると、以下のような出力が表示されます：
+### レポートの内容
 
 ```
-===== Attack result for example 1/500 Norm(2)=0.000000 =====
-All Best Norms: Norm(-1)=0.000000 Norm(1)=0.000000 Norm(2)=0.000000
+詐欺検知モデル攻撃分析レポート
+================================================================================
+
+1. 基本情報
+----------------------------------------
+データセット: top100_cleaned_data.csv
+正規化: 適用
+特徴量数: 21
+詐欺ケース数: 1
+モデル精度: 1.0000
+攻撃サンプル数: 1
+
+2. 摂動統計
+----------------------------------------
+L1ノルム:
+  平均: 2.345678
+  中央値: 2.345678
+  最小値: 2.345678
+  最大値: 2.345678
+
+3. 最も影響を受けた特徴量
+----------------------------------------
+ 1. velocity_6h
+    変更率: 100.0%
+    平均摂動: 1.234567
+    最大摂動: 1.234567
+
+4. 主要な発見
+----------------------------------------
+• 平均L2摂動: 1.234567
+• 摂動規模: 微小摂動
+• 最も脆弱な特徴量: velocity_6h
+• 正規化により微小摂動での攻撃が成功
+• モデルの頑健性に課題があることが判明
 ```
 
-- **Norm(2)=0.000000**: L2ノルムが0に近いほど、元データからの変更が小さい
-- **Initial point label:0**: 攻撃により詐欺(1)→非詐欺(0)への誤分類に成功
+## 🔧 高度な使い方
 
-## データセット
+### カスタム分析
 
-### Base.csv構造
-- `fraud_bool`: 詐欺フラグ（0=非詐欺, 1=詐欺）
-- 31個の特徴量（収入、年齢、デバイス情報など）
-- カテゴリ変数: `payment_type`, `employment_status`, `housing_status`, `source`, `device_os`
+```python
+# 特定の分析のみ実行
+system = FraudAttackSystem('data.csv')
 
-### 特徴量の種類
-1. **数値特徴量**: 収入、年齢、金額など
-2. **カテゴリ特徴量**: 支払い方法、雇用状況、住居状況など
-3. **バイナリ特徴量**: フラグ系の特徴量
+# モデル訓練のみ
+system.train_model()
 
-## トラブルシューティング
+# 既存の攻撃結果を分析
+system.analyze_attack_results()
+```
 
-### コンパイルエラー
+### 正規化の有無による比較
+
+```python
+# 正規化あり
+system_norm = FraudAttackSystem('data.csv', normalize_features=True)
+results_norm = system_norm.run_full_pipeline()
+
+# 正規化なし
+system_raw = FraudAttackSystem('data.csv', normalize_features=False)
+results_raw = system_raw.run_full_pipeline()
+
+# 結果比較
+print(f"正規化あり L2摂動: {results_norm['analysis']['l2_norm']['mean']:.6f}")
+print(f"正規化なし L2摂動: {results_raw['analysis']['l2_norm']['mean']:.6f}")
+```
+
+## 📈 結果の解釈
+
+### 摂動の大きさ
+- **L2ノルム < 1.0**: 微小摂動（正規化済みデータで一般的）
+- **L2ノルム > 10.0**: 大きな摂動（生データで一般的）
+
+### 攻撃成功の意味
+- 元の詐欺ケース（`fraud_bool=1`）が正常（`fraud_bool=0`）と誤分類される
+- 小さな摂動で達成できるほど、モデルの脆弱性が高い
+
+### 特徴量の重要度
+- **変更率**: その特徴量が変更されたサンプルの割合
+- **平均摂動**: 特徴量の平均的な変更量
+- **最大摂動**: 特徴量の最大変更量
+
+## ⚠️ 注意事項
+
+1. **データサイズ**: 大きなデータセットでは実行時間が長くなります
+2. **メモリ使用量**: 特徴量数が多い場合はメモリ使用量に注意
+3. **攻撃時間**: LT-Attackは時間がかかる場合があります（タイムアウト: 5分）
+4. **詐欺ケース数**: 詐欺ケースが少ない場合は分析結果が限定的になります
+
+## 🐛 トラブルシューティング
+
+### よくあるエラー
+
+**1. `FileNotFoundError`**
 ```bash
-# Boostが見つからない場合
-brew install boost
-export BOOST_ROOT=/opt/homebrew/opt/boost
-
-# Makefileの修正が必要な場合
-make clean
-make
+# データファイルのパスを確認
+ls -la top100_cleaned_data.csv
 ```
 
-### Python エラー
+**2. `lt_attack command not found`**
 ```bash
-# 必要なライブラリが不足している場合
-pip install xgboost==1.6.2 scikit-learn pandas numpy
-
-# XGBoostのバージョンが古い場合
-pip install --upgrade xgboost
+# 親ディレクトリにlt_attackがあることを確認
+ls -la ../lt_attack
 ```
 
-### 攻撃の失敗
-- モデルの性能が低い場合、攻撃対象となる正しく分類されたサンプルが少なくなります
-- `num_threads`や`num_attack_per_point`を調整して攻撃強度を変更できます
+**3. `No fraud cases found`**
+```bash
+# データに詐欺ケース（fraud_bool=1）があることを確認
+python3 -c "import pandas as pd; print(pd.read_csv('data.csv')['fraud_bool'].value_counts())"
+```
 
-## アルゴリズム詳細
+**4. メモリ不足**
+```bash
+# より少ないスレッド数で実行
+python3 fraud_attack_system.py data.csv --threads 5
+```
 
-### LT-Attack（Leaf Tuple Attack）
-1. 決定木アンサンブルの各サンプルをLeaf Tupleとして表現
-2. Hamming距離1の近傍探索で最適な敵対的サンプルを発見
-3. 複数のノルム（L1, L2, L∞）で変更量を最小化
+### デバッグモード
 
-### カテゴリ変数の処理
-1. LabelEncoderで数値に変換
-2. 攻撃実行（連続値として処理）
-3. 最近傍の有効なカテゴリ値に丸め
+```python
+# より詳細なログを出力
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
-## セキュリティ考慮事項
+system = FraudAttackSystem('data.csv')
+system.run_full_pipeline()
+```
 
-**⚠️ 警告: このシステムは研究・教育目的のみに使用してください**
+## 📚 参考文献
 
-- 実際の詐欺検知システムへの攻撃は違法行為です
-- 防御手法の研究や、ロバストなモデル開発にのみ使用してください
-- 商用利用前には必ず法的検討を行ってください
+- Zhang, C., Zhang, H., & Hsieh, C. J. (2020). An Efficient Adversarial Attack for Tree Ensembles. NeurIPS 2020.
+- LT-Attack: https://github.com/chong-z/tree-ensemble-attack
 
-## 参考文献
+## 📄 ライセンス
 
-Chong Zhang, Huan Zhang, Cho-Jui Hsieh, "An Efficient Adversarial Attack for Tree Ensembles", NeurIPS 2020
-
+このプロジェクトは元のLT-Attackプロジェクトのライセンスに従います。

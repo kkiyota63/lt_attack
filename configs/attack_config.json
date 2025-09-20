@@ -1,0 +1,14 @@
+{
+  "search_mode": "lt-attack",
+  "norm_type": 2,
+  "num_point": 1,
+  "num_threads": 10,
+  "num_attack_per_point": 10,
+  "enable_early_return": true,
+  "model": "XGBoost/attack_model.json",
+  "inputs": "XGBoost/fraud_test.libsvm",
+  "num_classes": 2,
+  "num_features": 21,
+  "feature_start": 1,
+  "adv_training_path": "XGBoost/adversarial_examples.libsvm"
+}

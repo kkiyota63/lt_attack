@@ -10,7 +10,7 @@
   🎯 ワンコマンド実行（最短ルート）
 
   cd XGBoost
-  python main.py pipeline
+  python main.py pipeline csv名
 
   これで学習→攻撃→検証まで自動実行されます！
 

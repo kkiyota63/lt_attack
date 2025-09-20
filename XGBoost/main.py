@@ -3,12 +3,15 @@
 詐欺検知攻撃システム - メインエントリポイント
 
 使用方法:
-    python main.py train                    # モデル訓練
-    python main.py attack                   # 攻撃実行
-    python main.py convert                  # 結果変換
-    python main.py verify                   # 攻撃検証
-    python main.py pipeline                 # 完全パイプライン
-    python main.py help                     # ヘルプ表示
+    python main.py train [csv_file]                    # モデル訓練
+    python main.py attack                              # 攻撃実行
+    python main.py convert                             # 結果変換
+    python main.py verify                              # 攻撃検証
+    python main.py pipeline [csv_file]                 # 完全パイプライン
+    python main.py help                                # ヘルプ表示
+
+引数:
+    csv_file    CSVデータファイルのパス (省略時: Base.csv)
 """
 
 import sys
@@ -20,12 +23,16 @@ def print_help():
     """ヘルプメッセージの表示"""
     print(__doc__)
     print("\nコマンド詳細:")
-    print("  train     - XGBoostモデルの訓練とファイル生成")
-    print("  attack    - 敵対的攻撃の実行 (C++バイナリを呼び出し)")
-    print("  convert   - LIBSVM結果をCSVに変換")
-    print("  verify    - 攻撃成功率の検証")
-    print("  pipeline  - 訓練から検証までの完全実行")
-    print("  help      - このヘルプメッセージを表示")
+    print("  train [csv_file]     - XGBoostモデルの訓練とファイル生成")
+    print("  attack              - 敵対的攻撃の実行 (C++バイナリを呼び出し)")
+    print("  convert             - LIBSVM結果をCSVに変換")
+    print("  verify              - 攻撃成功率の検証")
+    print("  pipeline [csv_file] - 訓練から検証までの完全実行")
+    print("  help                - このヘルプメッセージを表示")
+    print("\n例:")
+    print("  python main.py train fraud_data_cleaned.csv")
+    print("  python main.py pipeline fraud_data_cleaned.csv")
+    print("  python main.py train  # Base.csvを使用")
 
 def run_attack():
     """敵対的攻撃の実行"""
@@ -91,7 +98,17 @@ def main():
         return
     
     command = sys.argv[1].lower()
-    system = FraudAttackSystem()
+    
+    # CSVファイルパスの取得
+    csv_file = "Base.csv"  # デフォルト
+    if len(sys.argv) >= 3 and command in ["train", "pipeline"]:
+        csv_file = sys.argv[2]
+        if not os.path.exists(csv_file):
+            print(f"エラー: CSVファイルが見つかりません: {csv_file}")
+            return
+    
+    # システム初期化
+    system = FraudAttackSystem(data_path=csv_file)
     
     try:
         if command == "help":
@@ -99,6 +116,7 @@ def main():
             
         elif command == "train":
             print("=== モデル訓練 ===")
+            print(f"使用データ: {csv_file}")
             results = system.train_model()
             print(f"\n訓練完了 - 精度: {results['accuracy']:.4f}")
             
@@ -120,16 +138,17 @@ def main():
             
         elif command == "verify":
             print("=== 攻撃検証 ===")
-            if not os.path.exists('adversarial_fixed.csv'):
-                print("エラー: adversarial_fixed.csv が見つかりません")
+            if not os.path.exists('adversarial_sample.csv'):
+                print("エラー: adversarial_sample.csv が見つかりません")
                 print("まず変換を実行してください: python main.py convert")
                 return
             
-            results = system.verify_attack_success('adversarial_fixed.csv')
+            results = system.verify_attack_success('adversarial_sample.csv')
             print(f"\n検証完了 - 成功率: {results['success_rate']:.2f}%")
             
         elif command == "pipeline":
             print("=== 完全パイプライン ===")
+            print(f"使用データ: {csv_file}")
             
             # Step 1: Train
             print("\n[1/4] モデル訓練中...")
@@ -151,6 +170,7 @@ def main():
             
             print("\n[4/4] パイプライン完了!")
             print(f"最終結果:")
+            print(f"  - 使用データ: {csv_file}")
             print(f"  - モデル精度: {train_results['accuracy']:.4f}")
             print(f"  - 攻撃成功率: {verify_results['success_rate']:.2f}%")
             print(f"  - 攻撃サンプル数: {verify_results['successful_attacks']:,}/{verify_results['total_samples']:,}")
